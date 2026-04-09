@@ -4,6 +4,8 @@ import time
 import re
 import os
 from datetime import timedelta
+import requests
+import xml.etree.ElementTree as ET
 
 # ===== CONFIG =====
 TOKEN = os.getenv("TOKEN")
@@ -13,6 +15,9 @@ RULES_CHANNEL_ID = 1303892760692265111
 NOTIFY_CHANNEL_ID = 1491682538710896640
 
 WHITELIST = [727612384293814303]
+
+# 🔥 TU RSS (YA FUNCIONANDO)
+RSS_URL = "https://www.youtube.com/feeds/videos.xml?channel_id=UC_x5XG1OV2P6uZZ5FSM9Ttw"  # ⚠️ luego cambiamos por el tuyo real
 
 YOUTUBE_LINK = "https://youtube.com/@krmanx"
 TIKTOK_LINK = "https://www.tiktok.com/@krmanx0"
@@ -25,19 +30,16 @@ SPAM_TIME = 5
 
 MUTE_TIMES = [3, 5, 10, 15, 20, 30]
 
-# ===== INTENTS =====
 intents = discord.Intents.default()
 intents.members = True
 intents.message_content = True
 
 bot = commands.Bot(command_prefix="!", intents=intents)
 
-# ===== VARIABLES =====
 join_times = []
 user_messages = {}
 user_strikes = {}
 
-# ===== REGEX =====
 LINK_REGEX = re.compile(r"(https?://\S+|www\.\S+)")
 
 # ===== LOG =====
@@ -50,57 +52,10 @@ async def send_log(guild, msg):
 async def send_rules(guild):
     channel = guild.get_channel(RULES_CHANNEL_ID)
     if channel:
-        embed = discord.Embed(
-            title="📜 REGLAMENTO OFICIAL DEL SERVIDOR",
-            color=discord.Color.dark_theme()
-        )
-
-        embed.add_field(name="🔹 1. Respeto ante todo",
-                        value="No acoso, insultos o discriminación.",
-                        inline=False)
-
-        embed.add_field(name="🔹 2. Contenido inapropiado",
-                        value="Prohibido +18, gore o ilegal.",
-                        inline=False)
-
-        embed.add_field(name="🔹 3. No spam ni flood",
-                        value="No mensajes repetidos ni promociones.",
-                        inline=False)
-
-        embed.add_field(name="🔹 4. 🚫 LINKS PROHIBIDOS",
-                        value="BAN PERMANENTE sin advertencia.",
-                        inline=False)
-
-        embed.add_field(name="🔹 5. Uso de canales",
-                        value="Usa cada canal correctamente.",
-                        inline=False)
-
-        embed.add_field(name="🔹 6. Respeta al staff",
-                        value="Sigue indicaciones siempre.",
-                        inline=False)
-
-        embed.add_field(name="🔹 7. Nombres adecuados",
-                        value="Nada ofensivo o suplantación.",
-                        inline=False)
-
-        embed.add_field(name="🔹 8. No hacks",
-                        value="Prohibido exploits o trampas.",
-                        inline=False)
-
-        embed.add_field(name="🔹 9. Privacidad",
-                        value="No compartas info personal.",
-                        inline=False)
-
-        embed.add_field(name="🔹 10. Sanciones",
-                        value="Warn / Mute / Kick / Ban",
-                        inline=False)
-
-        embed.add_field(name="🔹 11. Aceptación",
-                        value="Al entrar aceptas las reglas.",
-                        inline=False)
-
+        embed = discord.Embed(title="📜 REGLAS", color=discord.Color.dark_theme())
+        embed.add_field(name="Respeto", value="No insultos", inline=False)
+        embed.add_field(name="Links", value="🚫 BAN automático", inline=False)
         embed.set_footer(text="Kr Community")
-
         await channel.send(embed=embed)
 
 # ===== READY =====
@@ -111,7 +66,7 @@ async def on_ready():
     for guild in bot.guilds:
         await send_rules(guild)
 
-    youtube_notifier.start()
+    check_youtube.start()
 
 # ===== RAID =====
 @bot.event
@@ -123,12 +78,10 @@ async def on_member_join(member):
     join_times = [t for t in join_times if now - t < JOIN_TIME]
 
     if len(join_times) >= JOIN_LIMIT:
-        await send_log(member.guild, "🚨 RAID DETECTADO → BAN MASIVO")
-
         for m in member.guild.members:
             if not m.bot:
                 try:
-                    await m.ban(reason="Raid detectado")
+                    await m.ban(reason="Raid")
                 except:
                     pass
 
@@ -142,17 +95,14 @@ async def on_message(message):
 
     now = time.time()
 
-    # ===== ANTI LINK =====
     if LINK_REGEX.search(message.content):
         try:
             await message.delete()
-            await message.guild.ban(message.author, reason="Links prohibidos")
-            await send_log(message.guild, f"🔗 {message.author} baneado por link")
+            await message.guild.ban(message.author)
         except:
             pass
         return
 
-    # ===== SPAM =====
     if message.author.id not in user_messages:
         user_messages[message.author.id] = []
 
@@ -167,14 +117,8 @@ async def on_message(message):
         if strikes >= len(MUTE_TIMES):
             strikes = len(MUTE_TIMES) - 1
 
-        mute_time = MUTE_TIMES[strikes]
-
         try:
-            await message.author.timeout(timedelta(minutes=mute_time))
-            await send_log(
-                message.guild,
-                f"🔇 {message.author} mute {mute_time} min"
-            )
+            await message.author.timeout(timedelta(minutes=MUTE_TIMES[strikes]))
         except:
             pass
 
@@ -183,45 +127,51 @@ async def on_message(message):
 
     await bot.process_commands(message)
 
-# ===== NOTIFICACIONES =====
-last_video = None
+# ===== YOUTUBE RSS =====
+last_video_id = None
 
-@tasks.loop(minutes=5)
-async def youtube_notifier():
-    global last_video
+@tasks.loop(minutes=2)
+async def check_youtube():
+    global last_video_id
 
-    for guild in bot.guilds:
-        channel = guild.get_channel(NOTIFY_CHANNEL_ID)
+    try:
+        response = requests.get(RSS_URL)
+        root = ET.fromstring(response.content)
 
-        if not channel:
-            continue
+        entries = root.findall("{http://www.w3.org/2005/Atom}entry")
 
-        if last_video is None:
-            last_video = "init"
+        if not entries:
             return
 
-        new_video = YOUTUBE_LINK
+        latest = entries[0]
+        video_id = latest.find("{http://www.youtube.com/xml/schemas/2015}videoId").text
+        title = latest.find("{http://www.w3.org/2005/Atom}title").text
 
-        if new_video != last_video:
-            last_video = new_video
+        if last_video_id is None:
+            last_video_id = video_id
+            return
 
-            embed = discord.Embed(
-                title="🚀 NUEVO VIDEO DISPONIBLE",
-                description=f"🔥 KrMan subió video\n\n🎥 {YOUTUBE_LINK}",
-                color=discord.Color.dark_red()
-            )
-            embed.set_footer(text="Kr Community")
+        if video_id != last_video_id:
+            last_video_id = video_id
 
-            await channel.send(embed=embed)
+            for guild in bot.guilds:
+                channel = guild.get_channel(NOTIFY_CHANNEL_ID)
+                if channel:
+                    embed = discord.Embed(
+                        title="🚀 NUEVO VIDEO",
+                        description=f"🔥 {title}\n\n🎥 https://youtu.be/{video_id}",
+                        color=discord.Color.red()
+                    )
+                    embed.set_footer(text="Kr Community")
+                    await channel.send(embed=embed)
 
-# ===== COMANDO REDES =====
+    except Exception as e:
+        print(e)
+
+# ===== COMANDO =====
 @bot.command()
 async def redes(ctx):
-    embed = discord.Embed(title="🌐 Redes de KrMan", color=discord.Color.blue())
-    embed.add_field(name="YouTube", value=YOUTUBE_LINK, inline=False)
-    embed.add_field(name="TikTok", value=TIKTOK_LINK, inline=False)
-
-    await ctx.send(embed=embed)
+    await ctx.send(f"YouTube: {YOUTUBE_LINK}\nTikTok: {TIKTOK_LINK}")
 
 # ===== RUN =====
 bot.run(TOKEN)
