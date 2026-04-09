@@ -180,6 +180,22 @@ async def on_message(message):
     await bot.process_commands(message)
 
 # ===== YOUTUBE =====
+# ===== YOUTUBE =====
+
+# GUARDAR ÚLTIMO VIDEO
+def load_last_video():
+    try:
+        with open("last_video.txt", "r") as f:
+            return f.read().strip()
+    except:
+        return None
+
+def save_last_video(video_id):
+    with open("last_video.txt", "w") as f:
+        f.write(video_id)
+
+last_video_id = load_last_video()
+
 @tasks.loop(minutes=1)
 async def check_youtube():
     global last_video_id
@@ -215,6 +231,7 @@ async def check_youtube():
         print(f"🚀 Nuevo video: {title}")
 
         last_video_id = video_id
+        save_last_video(video_id)
 
         for guild in bot.guilds:
             channel = guild.get_channel(NOTIFY_CHANNEL_ID)
