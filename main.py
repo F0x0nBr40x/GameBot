@@ -180,25 +180,23 @@ async def on_message(message):
     await bot.process_commands(message)
 
 # ===== YOUTUBE =====
-# ===== YOUTUBE =====
 
-# GUARDAR ÚLTIMO VIDEO
-def load_last_video():
+def load_videos():
     try:
-        with open("last_video.txt", "r") as f:
-            return f.read().strip()
+        with open("videos.txt", "r") as f:
+            return set(f.read().splitlines())
     except:
-        return None
+        return set()
 
-def save_last_video(video_id):
-    with open("last_video.txt", "w") as f:
-        f.write(video_id)
+def save_video(video_id):
+    with open("videos.txt", "a") as f:
+        f.write(video_id + "\n")
 
-last_video_id = load_last_video()
+sent_videos = load_videos()
 
 @tasks.loop(minutes=1)
 async def check_youtube():
-    global last_video_id
+    global sent_videos
 
     print("🔍 Revisando YouTube...")
 
@@ -209,40 +207,30 @@ async def check_youtube():
         entries = root.findall("{http://www.w3.org/2005/Atom}entry")
 
         if not entries:
-            print("❌ No hay videos")
             return
 
-        latest = None
+        for entry in entries[:3]:  # revisa últimos 3 videos
+            video_id = entry.find("{http://www.youtube.com/xml/schemas/2015}videoId").text
+            title = entry.find("{http://www.w3.org/2005/Atom}title").text
 
-        for entry in entries:
-            vid = entry.find("{http://www.youtube.com/xml/schemas/2015}videoId").text
-            
-            if vid != last_video_id:
-                latest = entry
-                break
+            if video_id in sent_videos:
+                continue  # ya enviado
 
-        if latest is None:
-            print("⚠️ No hay nuevos videos")
-            return
+            print(f"🚀 Nuevo video: {title}")
 
-        video_id = latest.find("{http://www.youtube.com/xml/schemas/2015}videoId").text
-        title = latest.find("{http://www.w3.org/2005/Atom}title").text
+            sent_videos.add(video_id)
+            save_video(video_id)
 
-        print(f"🚀 Nuevo video: {title}")
+            for guild in bot.guilds:
+                channel = bot.get_channel(NOTIFY_CHANNEL_ID)
 
-        last_video_id = video_id
-        save_last_video(video_id)
-
-        for guild in bot.guilds:
-            channel = guild.get_channel(NOTIFY_CHANNEL_ID)
-
-            if channel:
-                await channel.send(
-                    f"🚀 NUEVO VIDEO\n🔥 {title}\nhttps://youtu.be/{video_id}"
-                )
-                print("✅ Enviado a Discord")
-            else:
-                print("❌ Canal no encontrado")
+                if channel:
+                    await channel.send(
+                        f"🚀 NUEVO VIDEO\n🔥 {title}\nhttps://youtu.be/{video_id}"
+                    )
+                    print("✅ Enviado")
+                else:
+                    print("❌ Canal no encontrado")
 
     except Exception as e:
         print("💥 ERROR:", e)
