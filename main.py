@@ -17,7 +17,7 @@ NOTIFY_CHANNEL_ID = 1491682538710896640
 WHITELIST = [727612384293814303]
 
 # 🔥 TU RSS (YA FUNCIONANDO)
-RSS_URL = "https://www.youtube.com/feeds/videos.xml?channel_id=UC_x5XG1OV2P6uZZ5FSM9Ttw"  # ⚠️ luego cambiamos por el tuyo real
+RSS_URL = "https://www.youtube.com/feeds/videos.xml?channel_id=UCce7nHkQfNDKfZh4Z8MCG_Q"  # ⚠️ luego cambiamos por el tuyo real
 
 YOUTUBE_LINK = "https://youtube.com/@krmanx"
 TIKTOK_LINK = "https://www.tiktok.com/@krmanx0"
