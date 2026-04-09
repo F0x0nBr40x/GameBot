@@ -222,3 +222,6 @@ async def check_youtube():
 
     except Exception as e:
         print("ERROR RSS:", e)
+        
+        # ===== RUN =====
+        bot.run(TOKEN)
