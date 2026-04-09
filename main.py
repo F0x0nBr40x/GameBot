@@ -49,33 +49,78 @@ async def send_rules(guild):
     channel = guild.get_channel(RULES_CHANNEL_ID)
     if channel:
         embed = discord.Embed(
-            title="📜 Reglas del Servidor",
-            description="Lee y respeta las reglas para evitar sanciones.",
+            title="📜 REGLAMENTO OFICIAL DEL SERVIDOR",
+            description="Lee y respeta todas las reglas para evitar sanciones.",
             color=discord.Color.dark_theme()
         )
 
         embed.add_field(
-            name="1. Respeto",
-            value="No insultos, odio ni toxicidad.",
-            inline=False
-        )
-        embed.add_field(
-            name="2. No spam",
-            value="Evita flood y mensajes repetidos.",
-            inline=False
-        )
-        embed.add_field(
-            name="3. No links",
-            value="Links no autorizados = BAN automático.",
-            inline=False
-        )
-        embed.add_field(
-            name="4. Sigue las normas",
-            value="El staff tiene la última palabra.",
+            name="🔹 1. Respeto ante todo",
+            value="• Trata a todos con respeto.\n• No acoso, insultos o discriminación.",
             inline=False
         )
 
-        embed.set_footer(text="KrMan Community")
+        embed.add_field(
+            name="🔹 2. Prohibido contenido inapropiado",
+            value="• Nada de contenido +18, gore o ilegal.",
+            inline=False
+        )
+
+        embed.add_field(
+            name="🔹 3. No spam ni flood",
+            value="• No mensajes repetidos ni exceso de emojis.\n• No promociones sin permiso.",
+            inline=False
+        )
+
+        embed.add_field(
+            name="🔹 4. 🚫 LINKS PROHIBIDOS (IMPORTANTE)",
+            value="❌ Prohibido enviar cualquier tipo de link.\n❌ Incluye: páginas web, Discord, apps, descargas.\n❌ No importa si es seguro.\n\n🚨 **Sanción: BAN PERMANENTE**",
+            inline=False
+        )
+
+        embed.add_field(
+            name="🔹 5. Uso correcto de canales",
+            value="• Usa cada canal correctamente.\n• Evita el off-topic.",
+            inline=False
+        )
+
+        embed.add_field(
+            name="🔹 6. Respeta al staff",
+            value="• Sigue las indicaciones del staff.",
+            inline=False
+        )
+
+        embed.add_field(
+            name="🔹 7. Nombres y perfiles adecuados",
+            value="• No nombres ofensivos ni suplantación.",
+            inline=False
+        )
+
+        embed.add_field(
+            name="🔹 8. No hacks ni trampas",
+            value="• Prohibido promover hacks o exploits.",
+            inline=False
+        )
+
+        embed.add_field(
+            name="🔹 9. Privacidad",
+            value="• No compartas información personal.",
+            inline=False
+        )
+
+        embed.add_field(
+            name="🔹 10. Sanciones",
+            value="⚠️ Advertencia\n🔇 Mute\n🚫 Kick\n🔨 Ban permanente",
+            inline=False
+        )
+
+        embed.add_field(
+            name="🔹 11. Aceptación",
+            value="• Al entrar aceptas todas las reglas.",
+            inline=False
+        )
+
+        embed.set_footer(text="KrManX Community")
 
         await channel.send(embed=embed)
 
