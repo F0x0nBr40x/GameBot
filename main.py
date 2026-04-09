@@ -1,5 +1,5 @@
 import discord
-from discord.ext import commands
+from discord.ext import commands, tasks
 import time
 import re
 import os
@@ -10,8 +10,12 @@ TOKEN = os.getenv("TOKEN")
 
 LOG_CHANNEL_ID = 1491146567548403774
 RULES_CHANNEL_ID = 1303892760692265111
+NOTIFY_CHANNEL_ID = 1491682538710896640
 
 WHITELIST = [727612384293814303]
+
+YOUTUBE_LINK = "https://youtube.com/@krmanx"
+TIKTOK_LINK = "https://www.tiktok.com/@krmanx0"
 
 JOIN_LIMIT = 5
 JOIN_TIME = 10
@@ -32,11 +36,9 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 join_times = []
 user_messages = {}
 user_strikes = {}
-lockdown_active = False
 
 # ===== REGEX =====
 LINK_REGEX = re.compile(r"(https?://\S+|www\.\S+)")
-INVITE_REGEX = re.compile(r"(discord\.gg/|discord\.com/invite/)")
 
 # ===== LOG =====
 async def send_log(guild, msg):
@@ -50,77 +52,54 @@ async def send_rules(guild):
     if channel:
         embed = discord.Embed(
             title="📜 REGLAMENTO OFICIAL DEL SERVIDOR",
-            description="Lee y respeta todas las reglas para evitar sanciones.",
             color=discord.Color.dark_theme()
         )
 
-        embed.add_field(
-            name="🔹 1. Respeto ante todo",
-            value="• Trata a todos con respeto.\n• No acoso, insultos o discriminación.",
-            inline=False
-        )
+        embed.add_field(name="🔹 1. Respeto ante todo",
+                        value="No acoso, insultos o discriminación.",
+                        inline=False)
 
-        embed.add_field(
-            name="🔹 2. Prohibido contenido inapropiado",
-            value="• Nada de contenido +18, gore o ilegal.",
-            inline=False
-        )
+        embed.add_field(name="🔹 2. Contenido inapropiado",
+                        value="Prohibido +18, gore o ilegal.",
+                        inline=False)
 
-        embed.add_field(
-            name="🔹 3. No spam ni flood",
-            value="• No mensajes repetidos ni exceso de emojis.\n• No promociones sin permiso.",
-            inline=False
-        )
+        embed.add_field(name="🔹 3. No spam ni flood",
+                        value="No mensajes repetidos ni promociones.",
+                        inline=False)
 
-        embed.add_field(
-            name="🔹 4. 🚫 LINKS PROHIBIDOS (IMPORTANTE)",
-            value="❌ Prohibido enviar cualquier tipo de link.\n❌ Incluye: páginas web, Discord, apps, descargas.\n❌ No importa si es seguro.\n\n🚨 **Sanción: BAN PERMANENTE**",
-            inline=False
-        )
+        embed.add_field(name="🔹 4. 🚫 LINKS PROHIBIDOS",
+                        value="BAN PERMANENTE sin advertencia.",
+                        inline=False)
 
-        embed.add_field(
-            name="🔹 5. Uso correcto de canales",
-            value="• Usa cada canal correctamente.\n• Evita el off-topic.",
-            inline=False
-        )
+        embed.add_field(name="🔹 5. Uso de canales",
+                        value="Usa cada canal correctamente.",
+                        inline=False)
 
-        embed.add_field(
-            name="🔹 6. Respeta al staff",
-            value="• Sigue las indicaciones del staff.",
-            inline=False
-        )
+        embed.add_field(name="🔹 6. Respeta al staff",
+                        value="Sigue indicaciones siempre.",
+                        inline=False)
 
-        embed.add_field(
-            name="🔹 7. Nombres y perfiles adecuados",
-            value="• No nombres ofensivos ni suplantación.",
-            inline=False
-        )
+        embed.add_field(name="🔹 7. Nombres adecuados",
+                        value="Nada ofensivo o suplantación.",
+                        inline=False)
 
-        embed.add_field(
-            name="🔹 8. No hacks ni trampas",
-            value="• Prohibido promover hacks o exploits.",
-            inline=False
-        )
+        embed.add_field(name="🔹 8. No hacks",
+                        value="Prohibido exploits o trampas.",
+                        inline=False)
 
-        embed.add_field(
-            name="🔹 9. Privacidad",
-            value="• No compartas información personal.",
-            inline=False
-        )
+        embed.add_field(name="🔹 9. Privacidad",
+                        value="No compartas info personal.",
+                        inline=False)
 
-        embed.add_field(
-            name="🔹 10. Sanciones",
-            value="⚠️ Advertencia\n🔇 Mute\n🚫 Kick\n🔨 Ban permanente",
-            inline=False
-        )
+        embed.add_field(name="🔹 10. Sanciones",
+                        value="Warn / Mute / Kick / Ban",
+                        inline=False)
 
-        embed.add_field(
-            name="🔹 11. Aceptación",
-            value="• Al entrar aceptas todas las reglas.",
-            inline=False
-        )
+        embed.add_field(name="🔹 11. Aceptación",
+                        value="Al entrar aceptas las reglas.",
+                        inline=False)
 
-        embed.set_footer(text="KrManX Community")
+        embed.set_footer(text="Kr Community")
 
         await channel.send(embed=embed)
 
@@ -132,17 +111,18 @@ async def on_ready():
     for guild in bot.guilds:
         await send_rules(guild)
 
-# ===== RAID DETECTOR =====
+    youtube_notifier.start()
+
+# ===== RAID =====
 @bot.event
 async def on_member_join(member):
-    global join_times, lockdown_active
+    global join_times
 
     now = time.time()
     join_times.append(now)
     join_times = [t for t in join_times if now - t < JOIN_TIME]
 
     if len(join_times) >= JOIN_LIMIT:
-        lockdown_active = True
         await send_log(member.guild, "🚨 RAID DETECTADO → BAN MASIVO")
 
         for m in member.guild.members:
@@ -166,7 +146,7 @@ async def on_message(message):
     if LINK_REGEX.search(message.content):
         try:
             await message.delete()
-            await message.guild.ban(message.author, reason="Envío de links")
+            await message.guild.ban(message.author, reason="Links prohibidos")
             await send_log(message.guild, f"🔗 {message.author} baneado por link")
         except:
             pass
@@ -193,7 +173,7 @@ async def on_message(message):
             await message.author.timeout(timedelta(minutes=mute_time))
             await send_log(
                 message.guild,
-                f"🔇 {message.author} mute {mute_time} min (strike {strikes+1})"
+                f"🔇 {message.author} mute {mute_time} min"
             )
         except:
             pass
@@ -203,30 +183,45 @@ async def on_message(message):
 
     await bot.process_commands(message)
 
-# ===== COMANDOS =====
+# ===== NOTIFICACIONES =====
+last_video = None
+
+@tasks.loop(minutes=5)
+async def youtube_notifier():
+    global last_video
+
+    for guild in bot.guilds:
+        channel = guild.get_channel(NOTIFY_CHANNEL_ID)
+
+        if not channel:
+            continue
+
+        if last_video is None:
+            last_video = "init"
+            return
+
+        new_video = YOUTUBE_LINK
+
+        if new_video != last_video:
+            last_video = new_video
+
+            embed = discord.Embed(
+                title="🚀 NUEVO VIDEO DISPONIBLE",
+                description=f"🔥 KrMan subió video\n\n🎥 {YOUTUBE_LINK}",
+                color=discord.Color.dark_red()
+            )
+            embed.set_footer(text="Kr Community")
+
+            await channel.send(embed=embed)
+
+# ===== COMANDO REDES =====
 @bot.command()
-@commands.has_permissions(administrator=True)
-async def lockdown(ctx):
-    global lockdown_active
-    lockdown_active = True
+async def redes(ctx):
+    embed = discord.Embed(title="🌐 Redes de KrMan", color=discord.Color.blue())
+    embed.add_field(name="YouTube", value=YOUTUBE_LINK, inline=False)
+    embed.add_field(name="TikTok", value=TIKTOK_LINK, inline=False)
 
-    for channel in ctx.guild.text_channels:
-        await channel.set_permissions(ctx.guild.default_role, send_messages=False)
-
-    await ctx.send("🔒 Servidor en lockdown")
-    await send_log(ctx.guild, "🔒 Lockdown manual activado")
-
-@bot.command()
-@commands.has_permissions(administrator=True)
-async def unlock(ctx):
-    global lockdown_active
-    lockdown_active = False
-
-    for channel in ctx.guild.text_channels:
-        await channel.set_permissions(ctx.guild.default_role, send_messages=True)
-
-    await ctx.send("🔓 Lockdown desactivado")
-    await send_log(ctx.guild, "🔓 Lockdown desactivado")
+    await ctx.send(embed=embed)
 
 # ===== RUN =====
 bot.run(TOKEN)
