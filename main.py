@@ -180,35 +180,52 @@ async def on_message(message):
     await bot.process_commands(message)
 
 # ===== YOUTUBE =====
-@tasks.loop(minutes=2)
+@tasks.loop(minutes=1)
 async def check_youtube():
     global last_video_id
 
+    print("🔍 Revisando YouTube...")
+
     try:
         r = requests.get(RSS_URL)
+        print("🌐 RSS obtenido")
+
         root = ET.fromstring(r.content)
 
-        entry = root.findall("{http://www.w3.org/2005/Atom}entry")[0]
+        entries = root.findall("{http://www.w3.org/2005/Atom}entry")
 
-        video_id = entry.find("{http://www.youtube.com/xml/schemas/2015}videoId").text
-        title = entry.find("{http://www.w3.org/2005/Atom}title").text
-
-        if last_video_id is None:
-            last_video_id = video_id
+        if not entries:
+            print("❌ No hay videos en RSS")
             return
 
-        if video_id != last_video_id:
-            last_video_id = video_id
+        latest = entries[0]
 
-            for guild in bot.guilds:
-                channel = guild.get_channel(NOTIFY_CHANNEL_ID)
-                if channel:
-                    await channel.send(f"🚀 NUEVO VIDEO\n🔥 {title}\nhttps://youtu.be/{video_id}")
+        video_id = latest.find("{http://www.youtube.com/xml/schemas/2015}videoId").text
+        title = latest.find("{http://www.w3.org/2005/Atom}title").text
 
-                    await send_log(guild, "📢 Video enviado correctamente")
+        print(f"🎥 Video detectado: {title}")
+
+        if last_video_id == video_id:
+            print("⚠️ Es el mismo video, no se envía")
+            return
+
+        print("🚀 NUEVO VIDEO DETECTADO")
+
+        last_video_id = video_id
+
+        for guild in bot.guilds:
+            channel = guild.get_channel(NOTIFY_CHANNEL_ID)
+
+            if channel:
+                await channel.send(
+                    f"🚀 NUEVO VIDEO\n🔥 {title}\nhttps://youtu.be/{video_id}"
+                )
+                print("✅ Video enviado a Discord")
+            else:
+                print("❌ No encontró el canal")
 
     except Exception as e:
-        print("ERROR:", e)
+        print("💥 ERROR RSS:", e)
 
 # ===== RUN =====
 bot.run(TOKEN)
