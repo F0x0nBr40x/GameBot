@@ -7,7 +7,10 @@ from datetime import timedelta
 
 # ===== CONFIG =====
 TOKEN = os.getenv("TOKEN")
+
 LOG_CHANNEL_ID = 1491146567548403774
+RULES_CHANNEL_ID = 1303892760692265111
+
 WHITELIST = [727612384293814303]
 
 JOIN_LIMIT = 5
@@ -41,10 +44,48 @@ async def send_log(guild, msg):
     if channel:
         await channel.send(msg)
 
+# ===== REGLAS =====
+async def send_rules(guild):
+    channel = guild.get_channel(RULES_CHANNEL_ID)
+    if channel:
+        embed = discord.Embed(
+            title="📜 Reglas del Servidor",
+            description="Lee y respeta las reglas para evitar sanciones.",
+            color=discord.Color.dark_theme()
+        )
+
+        embed.add_field(
+            name="1. Respeto",
+            value="No insultos, odio ni toxicidad.",
+            inline=False
+        )
+        embed.add_field(
+            name="2. No spam",
+            value="Evita flood y mensajes repetidos.",
+            inline=False
+        )
+        embed.add_field(
+            name="3. No links",
+            value="Links no autorizados = BAN automático.",
+            inline=False
+        )
+        embed.add_field(
+            name="4. Sigue las normas",
+            value="El staff tiene la última palabra.",
+            inline=False
+        )
+
+        embed.set_footer(text="KrMan Community")
+
+        await channel.send(embed=embed)
+
 # ===== READY =====
 @bot.event
 async def on_ready():
     print(f"Bot listo: {bot.user}")
+
+    for guild in bot.guilds:
+        await send_rules(guild)
 
 # ===== RAID DETECTOR =====
 @bot.event
