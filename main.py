@@ -181,12 +181,13 @@ async def on_message(message):
 
 # ===== YOUTUBE =====
 
-def load_videos():
+def save_video(video_id):
     try:
-        with open("videos.txt", "r") as f:
-            return set(f.read().splitlines())
-    except:
-        return set()
+        with open("videos.txt", "a") as f:
+            f.write(video_id + "\n")
+        print(f"💾 Guardado: {video_id}")
+    except Exception as e:
+        print("❌ ERROR GUARDANDO:", e)
 
 def save_video(video_id):
     with open("videos.txt", "a") as f:
