@@ -198,7 +198,18 @@ async def check_youtube():
             print("❌ No hay videos en RSS")
             return
 
-        latest = entries[0]
+        latest = None
+
+for entry in entries:
+    vid = entry.find("{http://www.youtube.com/xml/schemas/2015}videoId").text
+    
+    if vid != last_video_id:
+        latest = entry
+        break
+
+if latest is None:
+    print("⚠️ No hay nuevos videos")
+    return
 
         video_id = latest.find("{http://www.youtube.com/xml/schemas/2015}videoId").text
         title = latest.find("{http://www.w3.org/2005/Atom}title").text
