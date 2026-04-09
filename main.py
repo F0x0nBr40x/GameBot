@@ -181,17 +181,23 @@ async def on_message(message):
 
 # ===== YOUTUBE =====
 
+def load_videos():
+    try:
+        with open("/app/videos.txt", "r") as f:
+            data = set(f.read().splitlines())
+            print("📂 Videos cargados:", data)
+            return data
+    except:
+        print("📂 No hay archivo, creando nuevo")
+        return set()
+
 def save_video(video_id):
     try:
-        with open("videos.txt", "a") as f:
+        with open("/app/videos.txt", "a") as f:
             f.write(video_id + "\n")
         print(f"💾 Guardado: {video_id}")
     except Exception as e:
         print("❌ ERROR GUARDANDO:", e)
-
-def save_video(video_id):
-    with open("videos.txt", "a") as f:
-        f.write(video_id + "\n")
 
 sent_videos = load_videos()
 
@@ -208,16 +214,18 @@ async def check_youtube():
         entries = root.findall("{http://www.w3.org/2005/Atom}entry")
 
         if not entries:
+            print("❌ No hay videos en RSS")
             return
 
-        for entry in entries[:3]:  # revisa últimos 3 videos
+        for entry in entries[:5]:  # revisa últimos 5 videos
             video_id = entry.find("{http://www.youtube.com/xml/schemas/2015}videoId").text
             title = entry.find("{http://www.w3.org/2005/Atom}title").text
 
             if video_id in sent_videos:
-                continue  # ya enviado
+                print(f"⏭️ Ya enviado: {title}")
+                continue
 
-            print(f"🚀 Nuevo video: {title}")
+            print(f"🚀 Nuevo video detectado: {title}")
 
             sent_videos.add(video_id)
             save_video(video_id)
@@ -229,12 +237,12 @@ async def check_youtube():
                     await channel.send(
                         f"🚀 NUEVO VIDEO\n🔥 {title}\nhttps://youtu.be/{video_id}"
                     )
-                    print("✅ Enviado")
+                    print("✅ Enviado a Discord")
                 else:
                     print("❌ Canal no encontrado")
 
     except Exception as e:
-        print("💥 ERROR:", e)
+        print("💥 ERROR RSS:", e)
 
 # ===== RUN =====
 bot.run(TOKEN)
