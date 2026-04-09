@@ -188,39 +188,31 @@ async def check_youtube():
 
     try:
         r = requests.get(RSS_URL)
-        print("🌐 RSS obtenido")
-
         root = ET.fromstring(r.content)
 
         entries = root.findall("{http://www.w3.org/2005/Atom}entry")
 
         if not entries:
-            print("❌ No hay videos en RSS")
+            print("❌ No hay videos")
             return
 
         latest = None
 
-for entry in entries:
-    vid = entry.find("{http://www.youtube.com/xml/schemas/2015}videoId").text
-    
-    if vid != last_video_id:
-        latest = entry
-        break
+        for entry in entries:
+            vid = entry.find("{http://www.youtube.com/xml/schemas/2015}videoId").text
+            
+            if vid != last_video_id:
+                latest = entry
+                break
 
-if latest is None:
-    print("⚠️ No hay nuevos videos")
-    return
+        if latest is None:
+            print("⚠️ No hay nuevos videos")
+            return
 
         video_id = latest.find("{http://www.youtube.com/xml/schemas/2015}videoId").text
         title = latest.find("{http://www.w3.org/2005/Atom}title").text
 
-        print(f"🎥 Video detectado: {title}")
-
-        if last_video_id == video_id:
-            print("⚠️ Es el mismo video, no se envía")
-            return
-
-        print("🚀 NUEVO VIDEO DETECTADO")
+        print(f"🚀 Nuevo video: {title}")
 
         last_video_id = video_id
 
@@ -231,12 +223,12 @@ if latest is None:
                 await channel.send(
                     f"🚀 NUEVO VIDEO\n🔥 {title}\nhttps://youtu.be/{video_id}"
                 )
-                print("✅ Video enviado a Discord")
+                print("✅ Enviado a Discord")
             else:
-                print("❌ No encontró el canal")
+                print("❌ Canal no encontrado")
 
     except Exception as e:
-        print("💥 ERROR RSS:", e)
+        print("💥 ERROR:", e)
 
 # ===== RUN =====
 bot.run(TOKEN)
