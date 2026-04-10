@@ -111,7 +111,7 @@ async def on_ready():
         check_youtube.start()
 
     for guild in bot.guilds:
-        await send_log(guild, "🤖 Bot encendido correctamente")
+        await send_log(guild, "Bot encendido correctamente... ✅")
 
     print(f"Bot listo: {bot.user}")
 
