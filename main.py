@@ -110,6 +110,9 @@ async def on_ready():
     if not check_youtube.is_running():
         check_youtube.start()
 
+    for guild in bot.guilds:
+        await send_log(guild, "🤖 Bot encendido correctamente")
+
     print(f"Bot listo: {bot.user}")
 
 # ===== COMANDO REGLAS =====
@@ -129,10 +132,7 @@ async def on_member_join(member):
     join_times = [t for t in join_times if now - t < JOIN_TIME]
 
     if len(join_times) >= JOIN_LIMIT:
-        await send_log(
-            member.guild,
-            "🚨 RAID DETECTADO\n🔨 Acciones automáticas ejecutadas"
-        )
+        await send_log(member.guild, "🚨 RAID DETECTADO\n🔨 Acciones automáticas ejecutadas")
 
         for m in member.guild.members:
             if not m.bot:
@@ -204,6 +204,17 @@ async def check_youtube():
 
         entries = root.findall("{http://www.w3.org/2005/Atom}entry")
 
+        # 🔥 PRIMER ARRANQUE → NO MANDA VIDEOS
+        if not sent_videos:
+            for entry in entries[:5]:
+                video_id = entry.find("{http://www.youtube.com/xml/schemas/2015}videoId").text
+                sent_videos.add(video_id)
+                save_video(video_id)
+
+            print("📂 Videos iniciales guardados (no enviados)")
+            return
+
+        # 🚀 SOLO NUEVOS
         for entry in entries[:5]:
             video_id = entry.find("{http://www.youtube.com/xml/schemas/2015}videoId").text
             title = entry.find("{http://www.w3.org/2005/Atom}title").text
