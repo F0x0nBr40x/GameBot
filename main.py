@@ -140,7 +140,7 @@ async def send_rules(guild):
 async def on_ready():
     print(f"Bot listo: {bot.user}")
 
- @bot.command()
+@bot.command()
 @commands.has_permissions(administrator=True)
 async def reglas(ctx):
     await send_rules(ctx.guild)
