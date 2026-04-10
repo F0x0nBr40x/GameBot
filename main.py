@@ -144,8 +144,11 @@ async def on_ready():
 @commands.has_permissions(administrator=True)
 async def reglas(ctx):
     await send_rules(ctx.guild)
-        await send_log(guild, "✅ Bot encendido correctamente")
+    await send_log(ctx.guild, "📜 Reglas enviadas manualmente")
 
+  @bot.event
+async def on_ready():
+    print(f"Bot listo: {bot.user}")
     check_youtube.start()
 
 # ===== RAID =====
