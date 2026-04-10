@@ -55,52 +55,84 @@ async def send_rules(guild):
     channel = guild.get_channel(RULES_CHANNEL_ID)
     if channel:
         embed = discord.Embed(
-            title="📜 REGLAMENTO OFICIAL DEL SERVIDOR",
-            color=discord.Color.dark_theme()
+            title="📜 KRHUB | REGLAMENTO OFICIAL",
+            description=(
+                "Bienvenido a la comunidad oficial de KrMan.\n\n"
+                "Este servidor sigue las normas de Discord y busca un ambiente sano, seguro y divertido para todos.\n\n"
+                "📌 Lee y respeta todas las reglas para permanecer en la comunidad."
+            ),
+            color=discord.Color.dark_red()
         )
 
-        embed.description = """
-🔹 1. Respeto ante todo
-• Trata a todos con respeto.
-• No acoso, insultos o discriminación.
+        # 🖼️ IMAGEN
+        embed.set_image(url="https://cdn.discordapp.com/attachments/1490502904832852168/1491645919148376215/BF8B437C-234D-4AEE-9BD9-18B9E71600E0.png")
 
-🔹 2. Prohibido contenido inapropiado
-• Nada de contenido +18, gore o ilegal.
+        # 🔹 REGLAS
+        embed.add_field(
+            name="🤝 Respeto y convivencia",
+            value="No se permite acoso, insultos, amenazas o discriminación.",
+            inline=False
+        )
 
-🔹 3. No spam ni flood
-• No mensajes repetidos ni exceso de emojis.
-• No promociones sin permiso.
+        embed.add_field(
+            name="🚫 Contenido prohibido",
+            value="Prohibido contenido +18, gore, ilegal o que viole las normas de Discord.",
+            inline=False
+        )
 
-🔹 4. 🚫 LINKS PROHIBIDOS
-❌ Prohibido cualquier tipo de link.
-🚨 BAN PERMANENTE.
+        embed.add_field(
+            name="🔗 Enlaces",
+            value="❌ Está prohibido enviar cualquier tipo de link.\n🚨 Sanción directa: BAN permanente.",
+            inline=False
+        )
 
-🔹 5. Uso correcto de canales
-• Usa cada canal correctamente.
+        embed.add_field(
+            name="💬 Spam y flood",
+            value="No spam, mensajes repetidos o uso excesivo de emojis.",
+            inline=False
+        )
 
-🔹 6. Respeta al staff
-• Sigue indicaciones del staff.
+        embed.add_field(
+            name="👮 Staff",
+            value="Las decisiones del staff deben respetarse en todo momento.",
+            inline=False
+        )
 
-🔹 7. Nombres adecuados
-• No ofensivos ni suplantación.
+        embed.add_field(
+            name="🧑 Identidad y comportamiento",
+            value="No suplantación de identidad ni nombres ofensivos.",
+            inline=False
+        )
 
-🔹 8. No hacks
-• Prohibido exploits.
+        embed.add_field(
+            name="⚙️ Hacks / trampas",
+            value="Prohibido promover hacks, exploits o actividades ilegales.",
+            inline=False
+        )
 
-🔹 9. Privacidad
-• No compartas info personal.
+        embed.add_field(
+            name="🔒 Privacidad",
+            value="No compartas información personal (tuya o de otros).",
+            inline=False
+        )
 
-🔹 10. Sanciones
-⚠️ Warn
-🔇 Mute
-🚫 Kick
-🔨 Ban
+        embed.add_field(
+            name="⚖️ Normas de Discord",
+            value=(
+                "Este servidor sigue las normas oficiales de Discord.\n"
+                "📖 Léelas aquí:\nhttps://discord.com/guidelines"
+            ),
+            inline=False
+        )
 
-🔹 11. Aceptación
-• Al entrar aceptas reglas.
+        embed.add_field(
+            name="🚨 Sanciones",
+            value="Dependiendo del caso:\n⚠️ Advertencia\n🔇 Mute\n🚫 Kick\n🔨 Ban permanente",
+            inline=False
+        )
 
-Kr Community
-"""
+        embed.set_footer(text="Kr Community | Sistema de moderación activo")
+
         await channel.send(embed=embed)
 
 # ===== READY =====
