@@ -140,8 +140,10 @@ async def send_rules(guild):
 async def on_ready():
     print(f"Bot listo: {bot.user}")
 
-    for guild in bot.guilds:
-        await send_rules(guild)
+ @bot.command()
+@commands.has_permissions(administrator=True)
+async def reglas(ctx):
+    await send_rules(ctx.guild)
         await send_log(guild, "✅ Bot encendido correctamente")
 
     check_youtube.start()
@@ -231,7 +233,12 @@ def save_video(video_id):
     except Exception as e:
         print("❌ ERROR GUARDANDO:", e)
 
-sent_videos = load_videos()
+@bot.event
+async def on_ready():
+    global sent_videos
+    sent_videos = load_videos()
+    check_youtube.start()
+    print(f"Bot listo: {bot.user}")
 
 @tasks.loop(minutes=1)
 async def check_youtube():
