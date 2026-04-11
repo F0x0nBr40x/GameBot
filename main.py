@@ -1,15 +1,13 @@
 import discord
 from discord.ext import commands, tasks
+from discord import app_commands
 import time
 import re
 import os
 import requests
 import xml.etree.ElementTree as ET
 from datetime import timedelta
-import os
-TOKEN = os.getenv("TOKEN")
 
-# ===== CONFIG =====
 TOKEN = os.getenv("TOKEN")
 
 LOG_CHANNEL_ID = 1491146567548403774
@@ -33,6 +31,7 @@ intents.members = True
 intents.message_content = True
 
 bot = commands.Bot(command_prefix="!", intents=intents)
+tree = bot.tree
 
 # ===== VARIABLES =====
 join_times = []
@@ -49,130 +48,111 @@ async def send_log(guild, msg):
         await channel.send(msg)
 
 # =========================
-# 📜 COMANDOS LISTA
+# 🛠️ LISTA DE COMANDOS
 # =========================
-@bot.command()
-async def comandos(ctx):
+@tree.command(name="comandos", description="Ver comandos disponibles")
+async def comandos(interaction: discord.Interaction):
     embed = discord.Embed(
         title="🛠️ KRBOT | COMANDOS",
-        description="Sistema de moderación disponible:",
+        description="Sistema de moderación:",
         color=discord.Color.blue()
     )
+    embed.add_field(name="/ban", value="Banear usuario", inline=False)
+    embed.add_field(name="/kick", value="Expulsar usuario", inline=False)
+    embed.add_field(name="/mute", value="Mutear usuario", inline=False)
 
-    embed.add_field(name="🔨 !ban", value="!ban @user razón", inline=False)
-    embed.add_field(name="👢 !kick", value="!kick @user razón", inline=False)
-    embed.add_field(name="🔇 !mute", value="!mute @user minutos razón", inline=False)
-
-    embed.set_footer(text="KrBot | Moderación activa")
-
-    await ctx.send(embed=embed)
+    await interaction.response.send_message(embed=embed, ephemeral=True)
 
 # =========================
-# 🔨 BAN
+# 🔨 BAN (SLASH)
 # =========================
-@bot.command()
-@commands.has_permissions(ban_members=True)
-async def ban(ctx, member: discord.Member, *, razon="Sin razón"):
-    try:
-        await member.ban(reason=razon)
-        await ctx.send(f"🔨 {member} fue baneado")
+@tree.command(name="ban", description="Banear usuario")
+@app_commands.describe(usuario="Usuario", razon="Razón")
+async def slash_ban(interaction: discord.Interaction, usuario: discord.Member, razon: str = "Sin razón"):
 
-        await send_log(
-            ctx.guild,
-            f"🔨 BAN\n👤 Usuario: {member}\n📌 Razón: {razon}\n👮 Mod: {ctx.author}"
-        )
-    except:
-        await ctx.send("❌ Error al banear")
+    if not interaction.user.guild_permissions.ban_members:
+        return await interaction.response.send_message("❌ Sin permisos", ephemeral=True)
 
-# =========================
-# 👢 KICK
-# =========================
-@bot.command()
-@commands.has_permissions(kick_members=True)
-async def kick(ctx, member: discord.Member, *, razon="Sin razón"):
-    try:
-        await member.kick(reason=razon)
-        await ctx.send(f"👢 {member} fue expulsado")
+    await usuario.ban(reason=razon)
 
-        await send_log(
-            ctx.guild,
-            f"👢 KICK\n👤 Usuario: {member}\n📌 Razón: {razon}\n👮 Mod: {ctx.author}"
-        )
-    except:
-        await ctx.send("❌ Error al expulsar")
+    embed = discord.Embed(
+        title="🔨 Usuario baneado",
+        description=f"👤 {usuario}\n📌 {razon}",
+        color=discord.Color.red()
+    )
+
+    await interaction.response.send_message(embed=embed)
+
+    await send_log(interaction.guild, f"🔨 BAN {usuario} | {razon}")
 
 # =========================
-# 🔇 MUTE
+# 👢 KICK (SLASH)
 # =========================
-@bot.command()
-@commands.has_permissions(moderate_members=True)
-async def mute(ctx, member: discord.Member, minutos: int, *, razon="Sin razón"):
-    try:
-        await member.timeout(timedelta(minutes=minutos))
-        await ctx.send(f"🔇 {member} muteado {minutos} min")
+@tree.command(name="kick", description="Expulsar usuario")
+@app_commands.describe(usuario="Usuario", razon="Razón")
+async def slash_kick(interaction: discord.Interaction, usuario: discord.Member, razon: str = "Sin razón"):
 
-        await send_log(
-            ctx.guild,
-            f"🔇 MUTE\n👤 Usuario: {member}\n⏱ Tiempo: {minutos} min\n📌 Razón: {razon}\n👮 Mod: {ctx.author}"
-        )
-    except:
-        await ctx.send("❌ Error al mutear")
+    if not interaction.user.guild_permissions.kick_members:
+        return await interaction.response.send_message("❌ Sin permisos", ephemeral=True)
 
-# ===== READY =====
+    await usuario.kick(reason=razon)
+
+    embed = discord.Embed(
+        title="👢 Usuario expulsado",
+        description=f"👤 {usuario}\n📌 {razon}",
+        color=discord.Color.orange()
+    )
+
+    await interaction.response.send_message(embed=embed)
+
+    await send_log(interaction.guild, f"👢 KICK {usuario} | {razon}")
+
+# =========================
+# 🔇 MUTE (SLASH)
+# =========================
+@tree.command(name="mute", description="Mutear usuario")
+@app_commands.describe(usuario="Usuario", minutos="Tiempo", razon="Razón")
+async def slash_mute(interaction: discord.Interaction, usuario: discord.Member, minutos: int, razon: str = "Sin razón"):
+
+    if not interaction.user.guild_permissions.moderate_members:
+        return await interaction.response.send_message("❌ Sin permisos", ephemeral=True)
+
+    await usuario.timeout(timedelta(minutes=minutos))
+
+    embed = discord.Embed(
+        title="🔇 Usuario muteado",
+        description=f"👤 {usuario}\n⏱ {minutos} min\n📌 {razon}",
+        color=discord.Color.dark_gray()
+    )
+
+    await interaction.response.send_message(embed=embed)
+
+    await send_log(interaction.guild, f"🔇 MUTE {usuario} {minutos}min | {razon}")
+
+# =========================
+# READY
+# =========================
 @bot.event
 async def on_ready():
-    global sent_videos
+    await tree.sync()
+    print(f"🔥 KrBot listo: {bot.user}")
 
-    sent_videos = load_videos()
-
-    if not check_youtube.is_running():
-        check_youtube.start()
-
-    for guild in bot.guilds:
-        await send_log(guild, "🟢 KrBot encendido correctamente")
-
-    print(f"Bot listo: {bot.user}")
-
-# ===== RAID =====
-@bot.event
-async def on_member_join(member):
-    global join_times
-
-    now = time.time()
-    join_times.append(now)
-    join_times = [t for t in join_times if now - t < JOIN_TIME]
-
-    if len(join_times) >= JOIN_LIMIT:
-        await send_log(member.guild, "🚨 RAID DETECTADO")
-
-        for m in member.guild.members:
-            if not m.bot:
-                try:
-                    await m.ban(reason="Raid")
-                except:
-                    pass
-
-# ===== MENSAJES =====
+# =========================
+# ANTISPAM / ANTILINK
+# =========================
 @bot.event
 async def on_message(message):
-    global user_messages, user_strikes
-
     if message.author.bot or message.author.id in WHITELIST:
         return await bot.process_commands(message)
 
     now = time.time()
 
-    # ANTI LINK
     if LINK_REGEX.search(message.content):
-        try:
-            await message.delete()
-            await message.guild.ban(message.author, reason="Links")
-            await send_log(message.guild, f"🔨 BAN {message.author} (link)")
-        except:
-            pass
+        await message.delete()
+        await message.guild.ban(message.author, reason="Links")
+        await send_log(message.guild, f"🔨 BAN {message.author} (link)")
         return
 
-    # SPAM
     if message.author.id not in user_messages:
         user_messages[message.author.id] = []
 
@@ -187,63 +167,15 @@ async def on_message(message):
         if strikes >= len(MUTE_TIMES):
             strikes = len(MUTE_TIMES) - 1
 
-        try:
-            await message.author.timeout(timedelta(minutes=MUTE_TIMES[strikes]))
-            await send_log(message.guild, f"🔇 MUTE {message.author}")
-        except:
-            pass
+        await message.author.timeout(timedelta(minutes=MUTE_TIMES[strikes]))
+        await send_log(message.guild, f"🔇 MUTE {message.author}")
 
         user_strikes[message.author.id] = strikes + 1
         user_messages[message.author.id] = []
 
     await bot.process_commands(message)
 
-# ===== YOUTUBE FILE =====
-def load_videos():
-    try:
-        with open("videos.txt", "r") as f:
-            return set(line.strip() for line in f if line.strip())
-    except:
-        return set()
-
-def save_video(video_id):
-    with open("videos.txt", "a") as f:
-        f.write(video_id + "\n")
-
-# ===== YOUTUBE =====
-@tasks.loop(minutes=1)
-async def check_youtube():
-    global sent_videos
-
-    try:
-        r = requests.get(RSS_URL)
-        root = ET.fromstring(r.content)
-        entries = root.findall("{http://www.w3.org/2005/Atom}entry")
-
-        if not sent_videos:
-            for entry in entries[:5]:
-                video_id = entry.find("{http://www.youtube.com/xml/schemas/2015}videoId").text
-                sent_videos.add(video_id)
-                save_video(video_id)
-            return
-
-        for entry in entries[:5]:
-            video_id = entry.find("{http://www.youtube.com/xml/schemas/2015}videoId").text
-            title = entry.find("{http://www.w3.org/2005/Atom}title").text
-
-            if video_id in sent_videos:
-                continue
-
-            sent_videos.add(video_id)
-            save_video(video_id)
-
-            for guild in bot.guilds:
-                channel = bot.get_channel(NOTIFY_CHANNEL_ID)
-                if channel:
-                    await channel.send(f"🚀 NUEVO VIDEO\n🔥 {title}\nhttps://youtu.be/{video_id}")
-
-    except Exception as e:
-        print("ERROR YOUTUBE:", e)
-
-# ===== RUN =====
+# =========================
+# RUN
+# =========================
 bot.run(TOKEN)
