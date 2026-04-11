@@ -6,9 +6,8 @@ import os
 import requests
 import xml.etree.ElementTree as ET
 from datetime import timedelta
-from dotenv import load_dotenv
-
-load_dotenv()
+import os
+TOKEN = os.getenv("TOKEN")
 
 # ===== CONFIG =====
 TOKEN = os.getenv("TOKEN")
