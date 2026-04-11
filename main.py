@@ -6,12 +6,14 @@ import os
 import requests
 import xml.etree.ElementTree as ET
 from datetime import timedelta
+from dotenv import load_dotenv
+
+load_dotenv()
 
 # ===== CONFIG =====
 TOKEN = os.getenv("TOKEN")
 
 LOG_CHANNEL_ID = 1491146567548403774
-RULES_CHANNEL_ID = 1303892760692265111
 NOTIFY_CHANNEL_ID = 1491682538710896640
 
 WHITELIST = [727612384293814303]
@@ -47,58 +49,75 @@ async def send_log(guild, msg):
     if channel:
         await channel.send(msg)
 
-# ===== REGLAS =====
-async def send_rules(guild):
-    channel = guild.get_channel(RULES_CHANNEL_ID)
-    if channel:
-        embed = discord.Embed(
-            title="📜 KRHUB | REGLAMENTO OFICIAL",
-            description=(
-                "Bienvenido a la comunidad oficial de KrMan.\n\n"
-                "Este servidor sigue las normas de Discord y busca un ambiente sano, seguro y divertido para todos.\n\n"
-                "📌 Lee y respeta todas las reglas para permanecer en la comunidad."
-            ),
-            color=discord.Color.dark_red()
-        )
+# =========================
+# 📜 COMANDOS LISTA
+# =========================
+@bot.command()
+async def comandos(ctx):
+    embed = discord.Embed(
+        title="🛠️ KRBOT | COMANDOS",
+        description="Sistema de moderación disponible:",
+        color=discord.Color.blue()
+    )
 
-        embed.set_image(url="https://cdn.discordapp.com/attachments/1490502904832852168/1491645919148376215/BF8B437C-234D-4AEE-9BD9-18B9E71600E0.png")
+    embed.add_field(name="🔨 !ban", value="!ban @user razón", inline=False)
+    embed.add_field(name="👢 !kick", value="!kick @user razón", inline=False)
+    embed.add_field(name="🔇 !mute", value="!mute @user minutos razón", inline=False)
 
-        embed.add_field(name="🤝 Respeto y convivencia", value="No acoso, insultos o discriminación.", inline=False)
-        embed.add_field(name="🚫 Contenido prohibido", value="Prohibido contenido +18, gore o ilegal.", inline=False)
-        embed.add_field(name="🔗 Enlaces", value="❌ Prohibidos.\n🚨 BAN permanente.", inline=False)
-        embed.add_field(name="💬 Spam y flood", value="No mensajes repetidos o flood.", inline=False)
-        embed.add_field(name="👮 Staff", value="Respeta decisiones del staff.", inline=False)
-        embed.add_field(name="🧑 Identidad", value="No suplantación ni nombres ofensivos.", inline=False)
-        embed.add_field(name="⚙️ Hacks", value="Prohibido promover hacks o exploits.", inline=False)
-        embed.add_field(name="🔒 Privacidad", value="No compartas info personal.", inline=False)
+    embed.set_footer(text="KrBot | Moderación activa")
 
-        embed.add_field(
-            name="⚖️ Normas de Discord",
-            value="https://discord.com/guidelines",
-            inline=False
-        )
+    await ctx.send(embed=embed)
 
-        embed.add_field(
-            name="🚨 Sanciones",
-            value="⚠️ Advertencia\n🔇 Mute\n🚫 Kick\n🔨 Ban permanente",
-            inline=False
-        )
-
-        embed.set_footer(text="Kr Community | Sistema de moderación activo")
-
-        await channel.send(embed=embed)
-
-# ===== YOUTUBE FILE =====
-def load_videos():
+# =========================
+# 🔨 BAN
+# =========================
+@bot.command()
+@commands.has_permissions(ban_members=True)
+async def ban(ctx, member: discord.Member, *, razon="Sin razón"):
     try:
-        with open("/app/videos.txt", "r") as f:
-            return set(line.strip() for line in f if line.strip())
-    except:
-        return set()
+        await member.ban(reason=razon)
+        await ctx.send(f"🔨 {member} fue baneado")
 
-def save_video(video_id):
-    with open("/app/videos.txt", "a") as f:
-        f.write(video_id + "\n")
+        await send_log(
+            ctx.guild,
+            f"🔨 BAN\n👤 Usuario: {member}\n📌 Razón: {razon}\n👮 Mod: {ctx.author}"
+        )
+    except:
+        await ctx.send("❌ Error al banear")
+
+# =========================
+# 👢 KICK
+# =========================
+@bot.command()
+@commands.has_permissions(kick_members=True)
+async def kick(ctx, member: discord.Member, *, razon="Sin razón"):
+    try:
+        await member.kick(reason=razon)
+        await ctx.send(f"👢 {member} fue expulsado")
+
+        await send_log(
+            ctx.guild,
+            f"👢 KICK\n👤 Usuario: {member}\n📌 Razón: {razon}\n👮 Mod: {ctx.author}"
+        )
+    except:
+        await ctx.send("❌ Error al expulsar")
+
+# =========================
+# 🔇 MUTE
+# =========================
+@bot.command()
+@commands.has_permissions(moderate_members=True)
+async def mute(ctx, member: discord.Member, minutos: int, *, razon="Sin razón"):
+    try:
+        await member.timeout(timedelta(minutes=minutos))
+        await ctx.send(f"🔇 {member} muteado {minutos} min")
+
+        await send_log(
+            ctx.guild,
+            f"🔇 MUTE\n👤 Usuario: {member}\n⏱ Tiempo: {minutos} min\n📌 Razón: {razon}\n👮 Mod: {ctx.author}"
+        )
+    except:
+        await ctx.send("❌ Error al mutear")
 
 # ===== READY =====
 @bot.event
@@ -111,16 +130,9 @@ async def on_ready():
         check_youtube.start()
 
     for guild in bot.guilds:
-        await send_log(guild, "KrBot encendido correctamente... ✅")
+        await send_log(guild, "🟢 KrBot encendido correctamente")
 
     print(f"Bot listo: {bot.user}")
-
-# ===== COMANDO REGLAS =====
-@bot.command()
-@commands.has_permissions(administrator=True)
-async def reglas(ctx):
-    await send_rules(ctx.guild)
-    await send_log(ctx.guild, "📜 Reglas enviadas manualmente")
 
 # ===== RAID =====
 @bot.event
@@ -132,12 +144,12 @@ async def on_member_join(member):
     join_times = [t for t in join_times if now - t < JOIN_TIME]
 
     if len(join_times) >= JOIN_LIMIT:
-        await send_log(member.guild, "🚨 RAID DETECTADO\n🔨 Acciones automáticas ejecutadas")
+        await send_log(member.guild, "🚨 RAID DETECTADO")
 
         for m in member.guild.members:
             if not m.bot:
                 try:
-                    await m.ban(reason="Raid detectado")
+                    await m.ban(reason="Raid")
                 except:
                     pass
 
@@ -155,11 +167,8 @@ async def on_message(message):
     if LINK_REGEX.search(message.content):
         try:
             await message.delete()
-            await message.guild.ban(message.author, reason="Links prohibidos")
-            await send_log(
-                message.guild,
-                f"🔨 BAN\n👤 Usuario: {message.author}\n📌 Razón: Envío de links"
-            )
+            await message.guild.ban(message.author, reason="Links")
+            await send_log(message.guild, f"🔨 BAN {message.author} (link)")
         except:
             pass
         return
@@ -181,10 +190,7 @@ async def on_message(message):
 
         try:
             await message.author.timeout(timedelta(minutes=MUTE_TIMES[strikes]))
-            await send_log(
-                message.guild,
-                f"🔇 MUTE\n👤 Usuario: {message.author}\n⏱ Tiempo: {MUTE_TIMES[strikes]} min\n📌 Razón: Spam"
-            )
+            await send_log(message.guild, f"🔇 MUTE {message.author}")
         except:
             pass
 
@@ -192,6 +198,18 @@ async def on_message(message):
         user_messages[message.author.id] = []
 
     await bot.process_commands(message)
+
+# ===== YOUTUBE FILE =====
+def load_videos():
+    try:
+        with open("videos.txt", "r") as f:
+            return set(line.strip() for line in f if line.strip())
+    except:
+        return set()
+
+def save_video(video_id):
+    with open("videos.txt", "a") as f:
+        f.write(video_id + "\n")
 
 # ===== YOUTUBE =====
 @tasks.loop(minutes=1)
@@ -201,20 +219,15 @@ async def check_youtube():
     try:
         r = requests.get(RSS_URL)
         root = ET.fromstring(r.content)
-
         entries = root.findall("{http://www.w3.org/2005/Atom}entry")
 
-        # 🔥 PRIMER ARRANQUE → NO MANDA VIDEOS
         if not sent_videos:
             for entry in entries[:5]:
                 video_id = entry.find("{http://www.youtube.com/xml/schemas/2015}videoId").text
                 sent_videos.add(video_id)
                 save_video(video_id)
-
-            print("📂 Videos iniciales guardados (no enviados)")
             return
 
-        # 🚀 SOLO NUEVOS
         for entry in entries[:5]:
             video_id = entry.find("{http://www.youtube.com/xml/schemas/2015}videoId").text
             title = entry.find("{http://www.w3.org/2005/Atom}title").text
@@ -227,11 +240,8 @@ async def check_youtube():
 
             for guild in bot.guilds:
                 channel = bot.get_channel(NOTIFY_CHANNEL_ID)
-
                 if channel:
-                    await channel.send(
-                        f"🚀 NUEVO VIDEO\n🔥 {title}\nhttps://youtu.be/{video_id}"
-                    )
+                    await channel.send(f"🚀 NUEVO VIDEO\n🔥 {title}\nhttps://youtu.be/{video_id}")
 
     except Exception as e:
         print("ERROR YOUTUBE:", e)
