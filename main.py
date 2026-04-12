@@ -1,26 +1,18 @@
 import discord
-from discord.ext import commands, tasks
+from discord.ext import commands
 from discord import app_commands
 import time
 import re
 import os
-import requests
-import xml.etree.ElementTree as ET
 from datetime import timedelta
 
 TOKEN = os.getenv("TOKEN")
 
 LOG_CHANNEL_ID = 1491146567548403774
-NOTIFY_CHANNEL_ID = 1491682538710896640
 
 WHITELIST = [727612384293814303]
 
-RSS_URL = "https://www.youtube.com/feeds/videos.xml?channel_id=UCce7nHkQfNDKfZh4Z8MCG_Q"
-
-JOIN_LIMIT = 5
-JOIN_TIME = 10
-
-SPAM_LIMIT = 5
+SPAM_LIMIT = 7
 SPAM_TIME = 5
 
 MUTE_TIMES = [3, 5, 10, 15, 20, 30]
@@ -34,10 +26,9 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 tree = bot.tree
 
 # ===== VARIABLES =====
-join_times = []
 user_messages = {}
 user_strikes = {}
-sent_videos = set()
+warnings_db = {}
 
 LINK_REGEX = re.compile(r"(https?://\S+|www\.\S+)")
 
@@ -48,86 +39,144 @@ async def send_log(guild, msg):
         await channel.send(msg)
 
 # =========================
-# 🛠️ LISTA DE COMANDOS
+# 🛠️ COMANDOS
 # =========================
 @tree.command(name="comandos", description="Ver comandos disponibles")
 async def comandos(interaction: discord.Interaction):
     embed = discord.Embed(
         title="🛠️ KRBOT | COMANDOS",
-        description="Sistema de moderación:",
         color=discord.Color.blue()
     )
+
     embed.add_field(name="/ban", value="Banear usuario", inline=False)
     embed.add_field(name="/kick", value="Expulsar usuario", inline=False)
     embed.add_field(name="/mute", value="Mutear usuario", inline=False)
+    embed.add_field(name="/warn", value="Advertir usuario", inline=False)
+    embed.add_field(name="/warnings", value="Ver advertencias", inline=False)
+    embed.add_field(name="/clearwarns", value="Borrar advertencias", inline=False)
+    embed.add_field(name="/removewarn", value="Eliminar advertencia", inline=False)
 
     await interaction.response.send_message(embed=embed, ephemeral=True)
 
 # =========================
-# 🔨 BAN (SLASH)
+# 🔨 BAN
 # =========================
-@tree.command(name="ban", description="Banear usuario")
-@app_commands.describe(usuario="Usuario", razon="Razón")
-async def slash_ban(interaction: discord.Interaction, usuario: discord.Member, razon: str = "Sin razón"):
+@tree.command(name="ban")
+async def ban(interaction: discord.Interaction, usuario: discord.Member, razon: str = "Sin razón"):
 
     if not interaction.user.guild_permissions.ban_members:
         return await interaction.response.send_message("❌ Sin permisos", ephemeral=True)
 
     await usuario.ban(reason=razon)
 
-    embed = discord.Embed(
-        title="🔨 Usuario baneado",
-        description=f"👤 {usuario}\n📌 {razon}",
-        color=discord.Color.red()
-    )
-
-    await interaction.response.send_message(embed=embed)
+    await interaction.response.send_message(f"🔨 {usuario} baneado")
 
     await send_log(interaction.guild, f"🔨 BAN {usuario} | {razon}")
 
 # =========================
-# 👢 KICK (SLASH)
+# 👢 KICK
 # =========================
-@tree.command(name="kick", description="Expulsar usuario")
-@app_commands.describe(usuario="Usuario", razon="Razón")
-async def slash_kick(interaction: discord.Interaction, usuario: discord.Member, razon: str = "Sin razón"):
+@tree.command(name="kick")
+async def kick(interaction: discord.Interaction, usuario: discord.Member, razon: str = "Sin razón"):
 
     if not interaction.user.guild_permissions.kick_members:
         return await interaction.response.send_message("❌ Sin permisos", ephemeral=True)
 
     await usuario.kick(reason=razon)
 
-    embed = discord.Embed(
-        title="👢 Usuario expulsado",
-        description=f"👤 {usuario}\n📌 {razon}",
-        color=discord.Color.orange()
-    )
-
-    await interaction.response.send_message(embed=embed)
+    await interaction.response.send_message(f"👢 {usuario} expulsado")
 
     await send_log(interaction.guild, f"👢 KICK {usuario} | {razon}")
 
 # =========================
-# 🔇 MUTE (SLASH)
+# 🔇 MUTE
 # =========================
-@tree.command(name="mute", description="Mutear usuario")
-@app_commands.describe(usuario="Usuario", minutos="Tiempo", razon="Razón")
-async def slash_mute(interaction: discord.Interaction, usuario: discord.Member, minutos: int, razon: str = "Sin razón"):
+@tree.command(name="mute")
+async def mute(interaction: discord.Interaction, usuario: discord.Member, minutos: int, razon: str = "Sin razón"):
 
     if not interaction.user.guild_permissions.moderate_members:
         return await interaction.response.send_message("❌ Sin permisos", ephemeral=True)
 
     await usuario.timeout(timedelta(minutes=minutos))
 
+    await interaction.response.send_message(f"🔇 {usuario} muteado {minutos} min")
+
+    await send_log(interaction.guild, f"🔇 MUTE {usuario} | {razon}")
+
+# =========================
+# ⚠️ WARN
+# =========================
+@tree.command(name="warn")
+async def warn(interaction: discord.Interaction, usuario: discord.Member, razon: str):
+
+    if not interaction.user.guild_permissions.moderate_members:
+        return await interaction.response.send_message("❌ Sin permisos", ephemeral=True)
+
+    if usuario.id not in warnings_db:
+        warnings_db[usuario.id] = []
+
+    warnings_db[usuario.id].append(razon)
+
+    total = len(warnings_db[usuario.id])
+
     embed = discord.Embed(
-        title="🔇 Usuario muteado",
-        description=f"👤 {usuario}\n⏱ {minutos} min\n📌 {razon}",
-        color=discord.Color.dark_gray()
+        title="⚠️ Advertencia",
+        description=f"{usuario}\n📌 {razon}\n📊 Total: {total}",
+        color=discord.Color.orange()
     )
 
     await interaction.response.send_message(embed=embed)
 
-    await send_log(interaction.guild, f"🔇 MUTE {usuario} {minutos}min | {razon}")
+    await send_log(interaction.guild, f"⚠️ WARN {usuario} | {razon}")
+
+# =========================
+# 📋 VER WARNS
+# =========================
+@tree.command(name="warnings")
+async def warnings(interaction: discord.Interaction, usuario: discord.Member):
+
+    warns = warnings_db.get(usuario.id, [])
+
+    if not warns:
+        return await interaction.response.send_message("✅ Sin advertencias")
+
+    texto = "\n".join([f"{i+1}. {w}" for i, w in enumerate(warns)])
+
+    embed = discord.Embed(
+        title=f"⚠️ {usuario}",
+        description=texto,
+        color=discord.Color.orange()
+    )
+
+    await interaction.response.send_message(embed=embed)
+
+# =========================
+# 🧹 CLEAR WARNS
+# =========================
+@tree.command(name="clearwarns")
+async def clearwarns(interaction: discord.Interaction, usuario: discord.Member):
+
+    if not interaction.user.guild_permissions.moderate_members:
+        return await interaction.response.send_message("❌ Sin permisos", ephemeral=True)
+
+    warnings_db[usuario.id] = []
+
+    await interaction.response.send_message(f"🧹 Warns borrados de {usuario}")
+
+# =========================
+# ❌ REMOVE WARN
+# =========================
+@tree.command(name="removewarn")
+async def removewarn(interaction: discord.Interaction, usuario: discord.Member, numero: int):
+
+    warns = warnings_db.get(usuario.id, [])
+
+    if not warns or numero < 1 or numero > len(warns):
+        return await interaction.response.send_message("❌ Número inválido")
+
+    removed = warns.pop(numero - 1)
+
+    await interaction.response.send_message(f"❌ Eliminado: {removed}")
 
 # =========================
 # READY
@@ -145,12 +194,15 @@ async def on_message(message):
     if message.author.bot or message.author.id in WHITELIST:
         return await bot.process_commands(message)
 
+    if len(message.content) < 3:
+        return await bot.process_commands(message)
+
     now = time.time()
 
     if LINK_REGEX.search(message.content):
         await message.delete()
         await message.guild.ban(message.author, reason="Links")
-        await send_log(message.guild, f"🔨 BAN {message.author} (link)")
+        await send_log(message.guild, f"🔨 BAN {message.author}")
         return
 
     if message.author.id not in user_messages:
@@ -168,6 +220,7 @@ async def on_message(message):
             strikes = len(MUTE_TIMES) - 1
 
         await message.author.timeout(timedelta(minutes=MUTE_TIMES[strikes]))
+
         await send_log(message.guild, f"🔇 MUTE {message.author}")
 
         user_strikes[message.author.id] = strikes + 1
