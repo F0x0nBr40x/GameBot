@@ -266,7 +266,12 @@ async def on_ready():
     if not check_youtube.is_running():
         check_youtube.start()
 
-    await tree.sync()
+    try:
+        synced = await tree.sync()
+        print(f"✅ Comandos sincronizados: {len(synced)}")
+    except Exception as e:
+        print(e)
+
     print(f"🔥 KrBot listo: {bot.user}")
 
 # =========================
